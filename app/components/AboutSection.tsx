@@ -1,4 +1,3 @@
-// app/components/AboutSection.tsx
 'use client';
 
 export default function AboutSection({ lang = 'EN' }: { lang?: 'EN' | 'JP' }) {
@@ -17,7 +16,7 @@ export default function AboutSection({ lang = 'EN' }: { lang?: 'EN' | 'JP' }) {
         </span>
       </div>
 
-      {/* ポートレート写真 (新しい白黒写真へ差し替え) */}
+      {/* ポートレート写真 */}
       <div className="mb-10 w-36 h-36 md:w-48 md:h-48 relative rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800/50 shadow-md bg-zinc-100 dark:bg-zinc-900">
         <img
           src="https://api.genkibrothers.co/wp-content/uploads/2026/09/DSC05371-bw.jpg"

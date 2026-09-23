@@ -93,7 +93,14 @@ async function getWorkData(slug: string) {
             thumbnailLabel
             metaClient
             metaYear
+            metaRole
+            metaDeliverables
+            heroHeadline
+            heroSubheadline
             whyStarted
+            challengeText
+            solutionText
+            impactMetrics
             shortPitch
             longPitch
           }
@@ -111,13 +118,25 @@ async function getWorkData(slug: string) {
     });
 
     const json = await res.json();
-    const work = json.data?.work;
     const allWorks: WorkNode[] = json.data?.works?.nodes || [];
+
+    // WPGraphQLの単体取得がNullを返した場合、一覧(allWorks)からスラッグ（-2の有無等）をフォールバック検索
+    const targetSlug = decodeURIComponent(slug);
+    const work =
+      json.data?.work ||
+      allWorks.find(
+        (w) =>
+          w.slug === targetSlug ||
+          w.slug === `${targetSlug}-2` ||
+          w.slug === targetSlug.replace(/-2$/, '')
+      );
 
     if (!work) return null;
 
     // 現在表示中の事例を除外した「他の事例」を取得
-    const otherWorks = allWorks.filter((w) => w.slug !== slug && w.id !== work.id);
+    const otherWorks = allWorks.filter(
+      (w) => w.slug !== work.slug && w.id !== work.id
+    );
 
     return { work, otherWorks };
   } catch (err) {

@@ -41,6 +41,8 @@ const expertiseItems: ExpertiseItem[] = [
   { id: 'cc-9', name: 'Video Production', nameJp: '映像制作', category: 'Creative & Craft' },
   { id: 'cc-10', name: 'Retail Installation', nameJp: 'リテールインスタレーション', category: 'Creative & Craft' },
   { id: 'cc-11', name: 'Editorial Design', nameJp: 'エディトリアルデザイン', category: 'Creative & Craft' },
+  { id: 'cc-12', name: 'Sound Design', nameJp: 'サウンドデザイン', category: 'Creative & Craft' },
+  { id: 'cc-13', name: 'Music', nameJp: '音楽・楽曲制作', category: 'Creative & Craft' },
 ];
 
 const filterCategoriesEN = ['All', 'R&D', 'Sales & Marketing', 'Creative & Craft'] as const;
@@ -191,7 +193,7 @@ export default function AboutClient() {
         <header className="px-8 md:px-16 max-w-5xl mx-auto space-y-6 w-full pt-8">
           <div className="text-left lg:text-center w-full">
             <span className="inline-block text-xs font-semibold uppercase tracking-widest text-black dark:text-[#FFE100] border-b-2 border-[#FFE100] dark:border-transparent pb-1" style={{ fontFamily: 'var(--font-outfit), sans-serif' }}>
-              // FOUNDER & CREATIVE DIRECTOR
+              // ABOUT GENKI BROTHERS
             </span>
           </div>
           <h1
@@ -202,22 +204,24 @@ export default function AboutClient() {
             }`}
             style={{ fontFamily: titleFont }}
           >
-            Yoshinori Kawamura
+            {lang === 'JP'
+              ? '単なるブランドを超えて — 信頼と共創に基づく歩み。'
+              : 'More Than Just a Brand — A Journey Built on Collaboration & Trust.'}
           </h1>
           <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto text-left lg:text-center leading-relaxed" style={{ fontFamily: bodyFont }}>
             {lang === 'JP'
-              ? 'Genki Brothers 創業者。20年以上のグローバル実績を持つクリエイティブディレクター／UX・UIストラテジスト。'
-              : 'Founder of Genki Brothers. Creative Director & UX/UI Strategist with over 20 years of global craft.'}
+              ? '「Brothers」という名には、世界中の優秀なエンジニア、映像ディレクター、ストラテジスト、専門的な才能を持つ人々との深く永続的な繋がりが込められています。'
+              : 'The name "Brothers" reflects the deep, enduring connections formed with brilliant engineers, film directors, strategists, and specialized talents across the world.'}
           </p>
         </header>
 
-        {/* 2. Hero Visual (16:9) */}
+        {/* 2. Hero Visual (New Photo DSC05371-bw.jpg) */}
         <section className="px-8 md:px-16 max-w-7xl mx-auto w-full">
           <div className="rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 aspect-[16/9] relative shadow-lg">
             <img
-              src="http://api.genkibrothers.co/wp-content/uploads/2026/09/profile-04.jpg"
-              alt="Yoshinori Kawamura - Genki Brothers Founder"
-              className="w-full h-full object-cover object-center"
+              src="https://api.genkibrothers.co/wp-content/uploads/2026/09/DSC05371-bw.jpg"
+              alt="Genki Brothers Founder"
+              className="w-full h-full object-cover object-center grayscale contrast-105"
             />
           </div>
         </section>
@@ -240,27 +244,27 @@ export default function AboutClient() {
               style={{ fontFamily: titleFont }}
             >
               {lang === 'JP'
-                ? '単なるブランドを超えて — 信頼と共創に基づくクリエイティブの領域。'
-                : 'More Than Just a Brand — A Journey Built on Collaboration & Trust.'}
+                ? '創業者 Yoshinori Kawamura のクリエイティブな探求と、柔軟なコレクティブ構造。'
+                : 'Embodying Creative Craft with Agile Precision.'}
             </h2>
 
             <div className="space-y-6 text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-sans" style={{ fontFamily: bodyFont }}>
               {lang === 'JP' ? (
                 <>
                   <p>
-                    Genki Brothersは、私個人のクリエイティブな軌跡そのものです。すべての契約、クライアントとの関係、最終的な納品物に対して、私自身が責任を持って向き合っています。しかし、どんなに優れたプロダクトも単独で作られるものではありません。
+                    Genki Brothersは、創業者 <strong>河村 慶典（Yoshinori Kawamura）</strong> のクリエイティブな歩みそのものを体現したプロダクションです。柔軟なクリエイティブ・コレクティブ（共同体）として、従来型の代理店組織の無駄なオーバーヘッドを排除し、複雑な課題に直面した際には領域を超えた専任のスクワッド（チーム）を編成します。
                   </p>
                   <p>
-                    <strong>&quot;Brothers&quot;</strong> という名には、世界中の優秀なエンジニア、映像ディレクター、ストラテジスト、専門的な才能を持つ人々との深く永続的な繋がりが込められています。柔軟なクリエイティブ・コレクティブ（共同体）として機動的なチームを編成し、複雑な課題に挑み、大胆なアイデアを組織的な精度で形にします。
+                    この機動的かつハイパーアダプティブな体制こそが、私たちの独創的な強みです。境界を超える独創性と組織的な厳格さを兼ね備え、アイデアの誕生から勝利の瞬間まで、一貫して妥協のないクオリティで大胆なビジョンを形にします。
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    Genki Brothers is the embodiment of my creative journey. Operating as a sole proprietorship, I personally take ownership of every contract, client relationship, and final deliverable. However, no great product is crafted in isolation.
+                    Genki Brothers is the embodiment of the founder&apos;s creative journey, founded by <strong>Yoshinori Kawamura</strong>. Operating as a flexible Creative Collective, we assemble dedicated squads to tackle complex challenges, celebrate victories, and bring bold ideas to life with institutional rigor.
                   </p>
                   <p>
-                    The name <strong>&quot;Brothers&quot;</strong> reflects the deep, enduring connections I&apos;ve formed with brilliant engineers, film directors, strategists, and specialized talents across the world. Together as a flexible Creative Collective, we assemble dedicated squads to tackle complex challenges, celebrate victories, and bring bold ideas to life with institutional rigor.
+                    By bypassing traditional agency overhead, our hyper-adaptable model combines boundary-pushing originality with precise craftsmanship—empowering us to adapt dynamically to every unique vision and execute high-impact digital products with uncompromised quality.
                   </p>
                 </>
               )}
@@ -294,25 +298,25 @@ export default function AboutClient() {
               {lang === 'JP' ? (
                 <>
                   <p>
-                    私のキャリアはデジタル画面から遠く離れた場所から始まりました。高校卒業直後、イギリスとカナダの厳しい厨房へと飛び込み、プロのシェフとして修行を積みました。
+                    創業者のデジタルデザインへの歩みは、画面やピクセルの世界から遠く離れた場所から始まりました。高校卒業直後、<strong>河村 慶典（Yoshinori Kawamura）</strong> はイギリスとカナダの非常に緊迫感のあるプロの厨房へと飛び込み、プロのシェフとしてキャリアを歩み始めました。
                   </p>
                   <p>
-                    料理は私に人間体験の根本を教えてくれました。言葉にされないゲストのニーズを先回りすること、タイミングの調整、五感の細部の調和、そして即座に感動を届けること。デジタルデザインやUX/UI戦略の世界へと転身した際、料理とプロダクトデザインがまったく同じDNAを持っていることに気づきました。どちらも人々に奉仕し、忘れられない価値を創造するために存在しています。
+                    料理は彼に人間体験の根本を教えました。言葉にされないゲストのニーズを先回りすること、タイミングの調整、五感の細部の調和、そして即座に感動を届けること。デジタルデザインやUX/UI戦略の世界へと転身した際、彼は料理とプロダクトデザインがまったく同じDNAを持っていることに気づきました。どちらも人々に奉仕し、忘れられない価値を創造するために存在しています。
                   </p>
-                  <p className="border-l-2 border-[#FFE100] pl-4 italic text-zinc-800 dark:text-zinc-200">
-                    「今日に至るまで、高級レストランでの体験こそがUXデザインの最高峰であると信じています。シームレスなサービス、共感、精度、そして驚き。」
+                  <p>
+                    現在、Genki Brothersは同じく高級レストランのバックグラウンドを持つ二人の兄弟、<strong>河村 慶典（Yoshinori Kawamura）</strong> と <strong>桑原 豪（Go Kuwahara）</strong> によって設立・運営されています。慶典（Yoshi）がリアルのビジョンを最先端のデジタル世界へ昇華させ、豪（Go）が枠に囚われないコンテンツとストーリーテリングで圧倒的な体験を生み出します。
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    My professional path began far from digital screens. Immediately after graduating high school, I stepped into the high-intensity kitchens of the United Kingdom and Canada, working as a professional chef.
+                    The founder&apos;s professional path began far from digital screens. Immediately after graduating high school, Yoshinori stepped into the high-intensity kitchens of the United Kingdom and Canada, working as a professional chef.
                   </p>
                   <p>
-                    Cooking taught me the fundamentals of human experience: anticipating a guest&apos;s unspoken needs, orchestrating timing, balancing sensory details, and delivering immediate value. When I transitioned into digital design and UX/UI strategy, I realized that cooking and product design share the exact same DNA—both exist solely to serve people and create unforgettable moments of value.
+                    Cooking taught him the fundamentals of human experience: anticipating a guest&apos;s unspoken needs, orchestrating timing, balancing sensory details, and delivering immediate value. When he transitioned into digital design and UX/UI strategy, he realized that cooking and product design share the exact same DNA—both exist solely to serve people and create unforgettable moments of value.
                   </p>
-                  <p className="border-l-2 border-[#FFE100] pl-4 italic text-zinc-800 dark:text-zinc-200">
-                    &quot;To this day, I believe a high-end restaurant experience remains the pinnacle of UX design: seamless service, empathy, precision, and delight.&quot;
+                  <p>
+                    Now, Genki Brothers is formed and run by two brothers, <strong>Yoshinori Kawamura</strong> and <strong>Go Kuwahara</strong>, who also come from a rich high-end restaurant background. Yoshi transforms physical vision into cutting-edge digital ecosystems, while Go creates stunning experiences with unlimited content and compelling narrative.
                   </p>
                 </>
               )}

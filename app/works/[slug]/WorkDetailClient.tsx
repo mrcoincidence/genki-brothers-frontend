@@ -122,6 +122,11 @@ export default function WorkDetailClient({ work, otherWorks }: { work: any, othe
     (item) => item.id !== work.id && item.slug !== work.slug
   );
 
+  // 【デバッグ用ログ】ブラウザのConsoleに受信データ数と配列を直接印字します
+  console.log('★[DEBUG] current work slug:', work?.slug);
+  console.log('★[DEBUG] otherWorks received from page.tsx:', otherWorks?.length, otherWorks);
+  console.log('★[DEBUG] filteredOtherWorks count:', filteredOtherWorks?.length, filteredOtherWorks);
+
   const extractImages = (prefix: string) => {
     const images: string[] = [];
     for (let i = 1; i <= 6; i++) {

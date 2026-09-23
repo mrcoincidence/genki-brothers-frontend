@@ -11,13 +11,11 @@ interface WorkDetails {
   metaClient?: string;
   metaYear?: string;
   metaRole?: string;
-  metaDeliverables?: string;
-  heroHeadline?: string;
-  heroSubheadline?: string;
+  metaDelivery?: string;
+  metaImpact?: string;
   whyStarted?: string;
-  challengeText?: string;
-  solutionText?: string;
-  impactMetrics?: string;
+  challenge?: string;
+  solution?: string;
   shortPitch?: string;
   longPitch?: string;
 }
@@ -62,13 +60,11 @@ async function getWorkData(slug: string) {
           metaClient
           metaYear
           metaRole
-          metaDeliverables
-          heroHeadline
-          heroSubheadline
+          metaDelivery
+          metaImpact
           whyStarted
-          challengeText
-          solutionText
-          impactMetrics
+          challenge
+          solution
           shortPitch
           longPitch
         }
@@ -93,14 +89,7 @@ async function getWorkData(slug: string) {
             thumbnailLabel
             metaClient
             metaYear
-            metaRole
-            metaDeliverables
-            heroHeadline
-            heroSubheadline
             whyStarted
-            challengeText
-            solutionText
-            impactMetrics
             shortPitch
             longPitch
           }

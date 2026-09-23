@@ -109,7 +109,7 @@ async function getWorkData(slug: string) {
     const json = await res.json();
     const allWorks: WorkNode[] = json.data?.works?.nodes || [];
 
-    // WPGraphQLの単体取得がNullを返した場合、一覧(allWorks)からスラッグ（-2の有無等）をフォールバック検索
+    // スラッグでのフォールバック検索
     const targetSlug = decodeURIComponent(slug);
     const work =
       json.data?.work ||
@@ -122,12 +122,28 @@ async function getWorkData(slug: string) {
 
     if (!work) return null;
 
-    // 現在表示中の事例を除外した「他の事例」を取得
-    const otherWorks = allWorks.filter(
-      (w) => w.slug !== work.slug && w.id !== work.id
-    );
+    // 現在の言語を取得 (判定不可の場合はスラッグの -2 の有無でフォールバック)
+    const currentLang = work.language?.code || (work.slug.endsWith('-2') ? 'JA' : 'EN');
 
-    return { work, otherWorks };
+    // 1. 同言語 かつ 通常実績 (whyStarted がない) のみを抽出
+    const otherWorks = allWorks.filter((w) => {
+      const wLang = w.language?.code || (w.slug.endsWith('-2') ? 'JA' : 'EN');
+      const isSameLang = wLang === currentLang;
+      const isWorkOnly = !w.workDetails?.whyStarted;
+      const isNotCurrent = w.slug !== work.slug && w.id !== work.id;
+      return isSameLang && isWorkOnly && isNotCurrent;
+    });
+
+    // 2. 同言語 かつ 自社事業 (whyStarted がある) のみを抽出 (StartupDetailClient用)
+    const otherStartups = allWorks.filter((w) => {
+      const wLang = w.language?.code || (w.slug.endsWith('-2') ? 'JA' : 'EN');
+      const isSameLang = wLang === currentLang;
+      const isStartupOnly = Boolean(w.workDetails?.whyStarted);
+      const isNotCurrent = w.slug !== work.slug && w.id !== work.id;
+      return isSameLang && isStartupOnly && isNotCurrent;
+    });
+
+    return { work, otherWorks, otherStartup: otherStartups[0] || null };
   } catch (err) {
     console.error('Failed to fetch work detail:', err);
     return null;
@@ -168,13 +184,13 @@ export default async function WorkPage({ params }: { params: Promise<{ slug: str
     notFound();
   }
 
-  const { work, otherWorks } = data;
+  const { work, otherWorks, otherStartup } = data;
   
-  // whyStarted の有無でのみ自社事業（Startup）判定を行う
+  // whyStarted の有無で自社事業（Startup）かどうかの判定
   const isStartup = Boolean(work.workDetails?.whyStarted);
 
   if (isStartup) {
-    return <StartupDetailClient work={work} otherStartup={otherWorks[0]} />;
+    return <StartupDetailClient work={work} otherStartup={otherStartup} />;
   }
 
   return <WorkDetailClient work={work} otherWorks={otherWorks} />;

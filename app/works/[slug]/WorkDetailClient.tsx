@@ -117,15 +117,8 @@ export default function WorkDetailClient({ work, otherWorks }: { work: any, othe
   const titleFont = isJp ? 'var(--font-biz-udpgothic), sans-serif' : 'var(--font-outfit), sans-serif';
   const bodyFont = isJp ? 'var(--font-zen-kaku), sans-serif' : 'var(--font-inter), sans-serif';
 
-  // 過剰な言語フィルタを解除し、現在の記事以外のすべての実績を取得
-  const filteredOtherWorks = (otherWorks || []).filter(
-    (item) => item.id !== work.id && item.slug !== work.slug
-  );
-
-  // 【デバッグ用ログ】ブラウザのConsoleに受信データ数と配列を直接印字します
-  console.log('★[DEBUG] current work slug:', work?.slug);
-  console.log('★[DEBUG] otherWorks received from page.tsx:', otherWorks?.length, otherWorks);
-  console.log('★[DEBUG] filteredOtherWorks count:', filteredOtherWorks?.length, filteredOtherWorks);
+  // page.tsx で事前に言語・種別フィルタ済みの配列を受け取る
+  const filteredOtherWorks = otherWorks || [];
 
   const extractImages = (prefix: string) => {
     const images: string[] = [];

@@ -40,6 +40,7 @@ function isJapaneseWork(work: any): boolean {
   const titleHasJp = jpRegex.test(work.title || '');
   const brandHasJp = jpRegex.test(work.workDetails?.brand || '');
   const labelHasJp = jpRegex.test(work.workDetails?.thumbnailLabel || '');
+  const clientHasJp = jpRegex.test(work.workDetails?.metaClient || '');
   const pitchHasJp = jpRegex.test(work.workDetails?.shortPitch || '') || jpRegex.test(work.workDetails?.longPitch || '');
   const linkUrl = work.link || work.uri || '';
   const hasJaInUrl = linkUrl.includes('/ja/') || linkUrl.includes('/jp/');
@@ -145,7 +146,6 @@ export default function StartupDetailClient({ work, otherStartup }: { work: any,
         });
         const jsonStd = await resStd.json();
         if (jsonStd.data?.works?.nodes) {
-          // 言語による過剰なフィルタを排除し、現在の記事以外の自社事業または実績を抽出
           const startupNodes = jsonStd.data.works.nodes.filter((w: any) =>
             w.id !== work.id && w.slug !== work.slug
           );

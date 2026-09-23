@@ -50,7 +50,7 @@ function isJapaneseWork(work: any): boolean {
     slug.endsWith('-jp') ||
     slug.includes('-ja-') ||
     slug.includes('-jp-');
-  return titleHasJp || brandHasJp || labelHasJp || pitchHasJp || hasJaInUrl || hasJaInSlug;
+  return titleHasJp || brandHasJp || labelHasJp || clientHasJp || pitchHasJp || hasJaInUrl || hasJaInSlug;
 }
 
 function CarouselGallery({ images, startIndex, openLightbox }: { images: string[], startIndex: number, openLightbox: (idx: number) => void }) {
@@ -121,23 +121,6 @@ export default function StartupDetailClient({ work, otherStartup }: { work: any,
 
   useEffect(() => {
     async function fetchNextStartup() {
-      const langCode = isJp ? 'JA' : 'EN';
-      const queryWithLang = `
-        query GetNextStartupLang($language: LanguageCodeFilterEnum!) {
-          works(first: 30, where: { language: $language, orderby: { field: DATE, order: DESC } }) {
-            nodes {
-              id
-              title
-              slug
-              uri
-              link
-              featuredImage { node { sourceUrl } }
-              workDetails { brand thumbnailLabel metaClient metaYear whyStarted shortPitch }
-            }
-          }
-        }
-      `;
-
       const queryStandard = `
         query GetNextStartupStandard {
           works(first: 50, where: { orderby: { field: DATE, order: DESC } }) {
@@ -155,42 +138,20 @@ export default function StartupDetailClient({ work, otherStartup }: { work: any,
       `;
 
       try {
-        let candidates: any[] = [];
-
-        const res = await fetch(WP_GRAPHQL_URL, {
+        const resStd = await fetch(`${WP_GRAPHQL_URL}?lang=all`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: queryWithLang, variables: { language: langCode } }),
+          body: JSON.stringify({ query: queryStandard }),
         });
-        const json = await res.json();
-
-        if (json.data?.works?.nodes) {
-          candidates = json.data.works.nodes.filter((w: any) =>
-            (w.workDetails?.metaYear || w.workDetails?.whyStarted) &&
-            w.id !== work.id &&
-            w.slug !== work.slug
+        const jsonStd = await resStd.json();
+        if (jsonStd.data?.works?.nodes) {
+          // 言語による過剰なフィルタを排除し、現在の記事以外の自社事業または実績を抽出
+          const startupNodes = jsonStd.data.works.nodes.filter((w: any) =>
+            w.id !== work.id && w.slug !== work.slug
           );
-        }
-
-        if (candidates.length === 0) {
-          const resStd = await fetch(WP_GRAPHQL_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: queryStandard }),
-          });
-          const jsonStd = await resStd.json();
-          if (jsonStd.data?.works?.nodes) {
-            const startupNodes = jsonStd.data.works.nodes.filter((w: any) =>
-              (w.workDetails?.metaYear || w.workDetails?.whyStarted) &&
-              w.id !== work.id &&
-              w.slug !== work.slug
-            );
-            candidates = startupNodes.filter((w: any) => isJapaneseWork(w) === isJp);
+          if (startupNodes.length > 0) {
+            setNextStartup(startupNodes[0]);
           }
-        }
-
-        if (candidates.length > 0) {
-          setNextStartup(candidates[0]);
         }
       } catch (err) {
         console.warn('Failed to fetch next startup:', err);
@@ -198,7 +159,7 @@ export default function StartupDetailClient({ work, otherStartup }: { work: any,
     }
 
     fetchNextStartup();
-  }, [work.id, work.slug, isJp]);
+  }, [work.id, work.slug]);
 
   const extractImages = (prefix: string) => {
     const images: string[] = [];
@@ -433,7 +394,7 @@ export default function StartupDetailClient({ work, otherStartup }: { work: any,
           </section>
         )}
 
-        {/* 11. Other Startup (モバイル時 aspect-[2/3]、PC時 md:aspect-[16/9] にレスポンシブ変更) */}
+        {/* 11. Other Startup */}
         <section className="px-8 md:px-16 max-w-7xl mx-auto w-full">
           <div className="pt-20 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-12">
             

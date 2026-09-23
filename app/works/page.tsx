@@ -1,7 +1,26 @@
-// app/works/page.tsx
-import WorksClient from './WorksClient';
+// app/works/[slug]/page.tsx
+import WorkDetailClient from './WorkDetailClient';
+import StartupDetailClient from './StartupDetailClient';
+import { notFound } from 'next/navigation';
 
 const WP_GRAPHQL_URL = process.env.NEXT_PUBLIC_WP_GRAPHQL_URL || 'https://api.genkibrothers.co/graphql';
+
+interface WorkDetails {
+  brand?: string;
+  thumbnailLabel?: string;
+  metaClient?: string;
+  metaYear?: string;
+  metaRole?: string;
+  metaDeliverables?: string;
+  heroHeadline?: string;
+  heroSubheadline?: string;
+  whyStarted?: string;
+  challengeText?: string;
+  solutionText?: string;
+  impactMetrics?: string;
+  shortPitch?: string;
+  longPitch?: string;
+}
 
 interface WorkNode {
   id: string;
@@ -9,23 +28,51 @@ interface WorkNode {
   slug: string;
   uri?: string;
   link?: string;
+  language?: {
+    code?: string;
+  };
   featuredImage?: {
     node?: {
       sourceUrl: string;
     };
   };
-  workDetails?: {
-    brand?: string;
-    thumbnailLabel?: string;
-    metaClient?: string;
-    metaYear?: string;
-    whyStarted?: string;
-  };
+  workDetails?: WorkDetails;
 }
 
-async function getWorks(): Promise<{ selected: WorkNode[]; startups: WorkNode[] }> {
+async function getWorkData(slug: string) {
   const query = `
-    query GetWorksList {
+    query GetWorkAndOthers($slug: ID!) {
+      work(id: $slug, idType: SLUG) {
+        id
+        title
+        slug
+        uri
+        link
+        language {
+          code
+        }
+        featuredImage {
+          node {
+            sourceUrl
+          }
+        }
+        workDetails {
+          brand
+          thumbnailLabel
+          metaClient
+          metaYear
+          metaRole
+          metaDeliverables
+          heroHeadline
+          heroSubheadline
+          whyStarted
+          challengeText
+          solutionText
+          impactMetrics
+          shortPitch
+          longPitch
+        }
+      }
       works(first: 50, where: { orderby: { field: DATE, order: DESC } }) {
         nodes {
           id
@@ -33,8 +80,58 @@ async function getWorks(): Promise<{ selected: WorkNode[]; startups: WorkNode[] 
           slug
           uri
           link
-          featuredImage { node { sourceUrl } }
-          workDetails { brand thumbnailLabel metaClient metaYear whyStarted }
+          language {
+            code
+          }
+          featuredImage {
+            node {
+              sourceUrl
+            }
+          }
+          workDetails {
+            brand
+            thumbnailLabel
+            metaClient
+            metaYear
+            whyStarted
+            shortPitch
+            longPitch
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const res = await fetch(`${WP_GRAPHQL_URL}?lang=all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables: { slug } }),
+      next: { revalidate: 60 },
+    });
+
+    const json = await res.json();
+    const work = json.data?.work;
+    const allWorks: WorkNode[] = json.data?.works?.nodes || [];
+
+    if (!work) return null;
+
+    // 現在表示中の事例を除外した「他の事例」を取得
+    const otherWorks = allWorks.filter((w) => w.slug !== slug && w.id !== work.id);
+
+    return { work, otherWorks };
+  } catch (err) {
+    console.error('Failed to fetch work detail:', err);
+    return null;
+  }
+}
+
+export async function generateStaticParams() {
+  const query = `
+    query GetAllWorkSlugs {
+      works(first: 50) {
+        nodes {
+          slug
         }
       }
     }
@@ -45,33 +142,32 @@ async function getWorks(): Promise<{ selected: WorkNode[]; startups: WorkNode[] 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
-      next: { revalidate: 60 }, // 60秒間キャッシュを保持して爆速化
+      next: { revalidate: 60 },
     });
     const json = await res.json();
-    const nodes: WorkNode[] = json.data?.works?.nodes || [];
-
-    const selected = nodes.filter((w) => !w.workDetails?.metaYear && !w.workDetails?.whyStarted);
-    const startups = nodes.filter((w) => w.workDetails?.metaYear || w.workDetails?.whyStarted);
-
-    return { selected, startups };
+    const nodes: { slug: string }[] = json.data?.works?.nodes || [];
+    return nodes.map((node) => ({ slug: node.slug }));
   } catch (err) {
-    console.error('Failed to fetch works for Works Page:', err);
-    return { selected: [], startups: [] };
+    return [];
   }
 }
 
-export const metadata = {
-  title: 'Works | Genki Brothers',
-  description: 'Building High-Impact Digital Experiences & Scalable Web Products.',
-};
+export default async function WorkPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const data = await getWorkData(slug);
 
-export default async function WorksPage() {
-  const { selected, startups } = await getWorks();
+  if (!data || !data.work) {
+    notFound();
+  }
 
-  return (
-    <WorksClient
-      selectedWorks={selected}
-      startupWorks={startups}
-    />
-  );
+  const { work, otherWorks } = data;
+  
+  // 【修正ポイント】metaYear ではなく whyStarted の有無でのみ自社事業（Startup）判定を行う
+  const isStartup = Boolean(work.workDetails?.whyStarted);
+
+  if (isStartup) {
+    return <StartupDetailClient work={work} otherStartup={otherWorks[0]} />;
+  }
+
+  return <WorkDetailClient work={work} otherWorks={otherWorks} />;
 }

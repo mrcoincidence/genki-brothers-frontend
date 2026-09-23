@@ -161,10 +161,12 @@ export default async function WorkPage({ params }: { params: Promise<{ slug: str
   }
 
   const { work, otherWorks } = data;
-  const isStartup = Boolean(work.workDetails?.metaYear || work.workDetails?.whyStarted);
+  
+  // whyStarted の有無でのみ自社事業（Startup）判定を行う
+  const isStartup = Boolean(work.workDetails?.whyStarted);
 
   if (isStartup) {
-    return <StartupDetailClient work={work} otherWorks={otherWorks} />;
+    return <StartupDetailClient work={work} otherStartup={otherWorks[0]} />;
   }
 
   return <WorkDetailClient work={work} otherWorks={otherWorks} />;

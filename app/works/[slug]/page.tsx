@@ -18,6 +18,8 @@ interface WorkDetails {
   challengeText?: string;
   solutionText?: string;
   impactMetrics?: string;
+  shortPitch?: string;
+  longPitch?: string;
 }
 
 interface WorkNode {
@@ -26,6 +28,9 @@ interface WorkNode {
   slug: string;
   uri?: string;
   link?: string;
+  language?: {
+    code?: string;
+  };
   featuredImage?: {
     node?: {
       sourceUrl: string;
@@ -43,6 +48,9 @@ async function getWorkData(slug: string) {
         slug
         uri
         link
+        language {
+          code
+        }
         featuredImage {
           node {
             sourceUrl
@@ -61,6 +69,8 @@ async function getWorkData(slug: string) {
           challengeText
           solutionText
           impactMetrics
+          shortPitch
+          longPitch
         }
       }
       works(first: 50, where: { orderby: { field: DATE, order: DESC } }) {
@@ -70,6 +80,9 @@ async function getWorkData(slug: string) {
           slug
           uri
           link
+          language {
+            code
+          }
           featuredImage {
             node {
               sourceUrl
@@ -81,6 +94,8 @@ async function getWorkData(slug: string) {
             metaClient
             metaYear
             whyStarted
+            shortPitch
+            longPitch
           }
         }
       }
@@ -102,7 +117,7 @@ async function getWorkData(slug: string) {
     if (!work) return null;
 
     // 現在表示中の事例を除外した「他の事例」を取得
-    const otherWorks = allWorks.filter((w) => w.slug !== slug);
+    const otherWorks = allWorks.filter((w) => w.slug !== slug && w.id !== work.id);
 
     return { work, otherWorks };
   } catch (err) {

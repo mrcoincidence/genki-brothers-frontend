@@ -1,9 +1,11 @@
 // app/layout.tsx
 import './globals.css';
+import type { Metadata } from 'next';
 import { Outfit, Inter, BIZ_UDPGothic, Zen_Kaku_Gothic_New } from 'next/font/google';
 import { ThemeProvider } from './components/ThemeProvider';
 import { LanguageProvider } from './components/LanguageContext';
 import CookieBanner from './components/CookieBanner';
+import { Analytics } from '@vercel/analytics/react';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -31,9 +33,20 @@ const zenKaku = Zen_Kaku_Gothic_New({
   display: 'swap',
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Genki Brothers',
   description: 'Creative Studio & Digital Architecture',
+  icons: {
+    icon: [
+      { url: 'https://api.genkibrothers.co/favicon/favicon.ico' },
+      { url: 'https://api.genkibrothers.co/favicon/favicon.svg', type: 'image/svg+xml' },
+      { url: 'https://api.genkibrothers.co/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: [
+      { url: 'https://api.genkibrothers.co/favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  manifest: 'https://api.genkibrothers.co/favicon/site.webmanifest',
 };
 
 export default function RootLayout({
@@ -48,6 +61,7 @@ export default function RootLayout({
           <ThemeProvider>
             {children}
             <CookieBanner />
+            <Analytics />
           </ThemeProvider>
         </LanguageProvider>
       </body>

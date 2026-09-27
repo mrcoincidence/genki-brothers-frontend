@@ -69,7 +69,7 @@ const getArticleBySlug = cache(async (rawSlug: string): Promise<ArticleNode | nu
     console.warn('Direct slug fetch failed, trying list scan:', err);
   }
 
-  // 2. フォールバック: 全投稿リストから slug / uri / link をデコード全照合して抽出
+  // 2. フォールバック: 全投稿リストから完全一致で照合抽出
   const queryList = `
     query GetAllArticlesForMatch {
       posts(first: 100) {
@@ -99,12 +99,21 @@ const getArticleBySlug = cache(async (rawSlug: string): Promise<ArticleNode | nu
         const nodeUri = normalizeSlug(node.uri || '');
         const nodeLink = normalizeSlug(node.link || '');
 
-        return (
-          nodeSlug === targetSlug ||
-          nodeUri.includes(targetSlug) ||
-          nodeLink.includes(targetSlug) ||
-          targetSlug.includes(nodeSlug)
-        );
+        // 1. スラッグ完全一致
+        if (nodeSlug === targetSlug) return true;
+
+        // 2. URI末尾のパスセグメント完全一致 (部分一致による vol-1 と vol-16 の誤検知を防止)
+        const uriParts = nodeUri.split('/').filter(Boolean);
+        if (uriParts.length > 0 && uriParts[uriParts.length - 1] === targetSlug) {
+          return true;
+        }
+
+        const linkParts = nodeLink.split('/').filter(Boolean);
+        if (linkParts.length > 0 && linkParts[linkParts.length - 1] === targetSlug) {
+          return true;
+        }
+
+        return false;
       });
 
       if (matched) return matched;

@@ -1,6 +1,7 @@
 // app/articles/[slug]/ArticleDetailClient.tsx
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface ArticleNode {
@@ -53,27 +54,194 @@ function isJapaneseArticle(article: any): boolean {
   const hasJaInUrl = linkUrl.includes('/ja/') || linkUrl.includes('/jp/');
   const slug = article.slug || '';
   const hasJaInSlug =
-    slug.endsWith('-2') ||
     slug.endsWith('-ja') ||
     slug.endsWith('-jp') ||
     slug.includes('-ja-') ||
     slug.includes('-jp-');
+
   return titleHasJp || contentHasJp || hasJaInUrl || hasJaInSlug;
 }
 
-function cleanWpBakeryShortcodes(htmlContent: string): string {
-  if (!htmlContent) return '';
+/**
+ * HTML構造および row-2col / caption-left クラスのみに基づいて
+ * 1カラム (768px) と 2カラム (1400px リキッド 5/6 + 1/6) を左右順序含め完全自動構築する関数
+ */
+function processArticleContent(rawHtml: string): string {
+  if (!rawHtml) return '';
 
-  let cleaned = htmlContent;
+  let html = rawHtml;
 
-  cleaned = cleaned.replace(
+  // 1. WPBakeryの見出しショートコードをHTML h4へ変換 (フォント30px, Outfit指定)
+  html = html.replace(
     /\[vc_custom_heading[^\]]*\]([\s\S]*?)\[\/vc_custom_heading\]/gi,
-    '<h2 class="text-2xl md:text-3xl font-medium tracking-tight text-black dark:text-white pt-10 pb-3">$1</h2>'
+    '<h4 class="text-[30px] font-medium tracking-tight text-black dark:text-white pt-10 pb-3" style="font-family: var(--font-outfit), sans-serif;">$1</h4>'
   );
 
-  cleaned = cleaned.replace(/\[\/?vc_[^\]]*\]/gi, '');
+  // 2. 不要なショートコードタグを除去
+  html = html.replace(/\[\/?vc_[^\]]*\]/gi, '');
 
-  return cleaned;
+  if (typeof window === 'undefined') {
+    return html;
+  }
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div class="article-parsed-root">${html}</div>`, 'text/html');
+    const root = doc.querySelector('.article-parsed-root');
+
+    if (!root) return html;
+
+    // 3. YouTube プレースホルダーを <iframe> に自動置換
+    root.querySelectorAll('img').forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      if (src.includes('youtu.be') || src.includes('youtube.com')) {
+        let videoId = '';
+        if (src.includes('youtu.be/')) {
+          videoId = src.split('youtu.be/')[1].split('?')[0];
+        } else if (src.includes('v=')) {
+          videoId = src.split('v=')[1].split('&')[0];
+        }
+
+        if (videoId) {
+          const iframe = doc.createElement('iframe');
+          iframe.src = `https://www.youtube.com/embed/${videoId}`;
+          iframe.className = 'w-full aspect-video rounded-2xl border-0 block shadow-lg my-4';
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+          iframe.setAttribute('allowfullscreen', 'true');
+          img.parentNode?.replaceChild(iframe, img);
+        }
+      }
+    });
+
+    const searchRoot = root.querySelector('.post-content, .wpb-content-wrapper') || root;
+    let topBlocks = Array.from(searchRoot.children) as HTMLElement[];
+
+    // 外層ラッパー要素の Unwrap
+    if (topBlocks.length === 1 && topBlocks[0].children.length > 0) {
+      const single = topBlocks[0];
+      if (!single.classList.contains('row-2col') && !single.classList.contains('wpb_column')) {
+        topBlocks = Array.from(single.children) as HTMLElement[];
+      }
+    }
+
+    const outputContainer = doc.createElement('div');
+    outputContainer.className = 'article-reconstructed-wrapper w-full';
+
+    topBlocks.forEach((node) => {
+      const elem = node as HTMLElement;
+      const className = elem.className || '';
+      const elemHTML = elem.outerHTML || '';
+
+      // 不要な空Pタグ等をスキップ
+      if (
+        (elem.tagName.toLowerCase() === 'p' && !elem.textContent?.trim() && !elem.querySelector('img, iframe, video')) ||
+        className.includes('post-after') ||
+        elem.querySelector('.author-profile') !== null
+      ) {
+        return;
+      }
+
+      // row-2col クラスの検出
+      const is2Col =
+        className.includes('row-2col') ||
+        elemHTML.includes('row-2col') ||
+        elem.querySelector('.row-2col') !== null;
+
+      if (is2Col) {
+        // ==========================================
+        // 【2カラム行】: 1400px 全幅リキッド Grid (5/6 + 1/6)
+        // ==========================================
+        const twoColRow = doc.createElement('div');
+        twoColRow.className =
+          'w-full max-w-[1400px] mx-auto px-6 md:px-12 my-12 md:my-16 grid grid-cols-1 md:grid-cols-6 gap-6 md:gap-10 items-start clear-both';
+
+        const mediaEl = (elem.querySelector('img, iframe, video') as HTMLElement) || elem;
+        const captionEl = (elem.querySelector('figcaption, .uncode_text_column, p') as HTMLElement) || null;
+
+        // caption-left クラスの検出 (左1/6キャプション + 右5/6メディア)
+        const isCaptionLeft =
+          className.includes('caption-left') ||
+          elemHTML.includes('caption-left') ||
+          elem.querySelector('.caption-left') !== null;
+
+        const captionStyle =
+          'text-[12px] text-zinc-600 dark:text-white font-sans leading-relaxed pt-2 md:pt-4 block [&_p]:text-[12px] [&_p]:text-zinc-600 [&_p]:dark:text-white';
+        const mediaStyle =
+          'w-full rounded-2xl overflow-hidden shadow-lg bg-zinc-100 dark:bg-zinc-900';
+
+        const mediaBox = doc.createElement('div');
+        const captionBox = doc.createElement('div');
+
+        if (mediaEl) {
+          const mediaClone = mediaEl.cloneNode(true) as HTMLElement;
+          if (mediaClone.tagName.toLowerCase() === 'img') {
+            mediaClone.className = 'w-full h-auto object-cover rounded-2xl block';
+          } else {
+            mediaClone.className = 'w-full aspect-video rounded-2xl overflow-hidden block shadow-lg';
+          }
+          mediaBox.appendChild(mediaClone);
+        }
+
+        if (captionEl) {
+          captionBox.innerHTML = captionEl.innerHTML;
+        }
+
+        if (isCaptionLeft) {
+          captionBox.className = `order-2 md:order-1 md:col-span-1 ${captionStyle}`;
+          mediaBox.className = `order-1 md:order-2 md:col-span-5 ${mediaStyle}`;
+          twoColRow.appendChild(captionBox);
+          twoColRow.appendChild(mediaBox);
+        } else {
+          mediaBox.className = `order-1 md:order-1 md:col-span-5 ${mediaStyle}`;
+          captionBox.className = `order-2 md:order-2 md:col-span-1 ${captionStyle}`;
+          twoColRow.appendChild(mediaBox);
+          twoColRow.appendChild(captionBox);
+        }
+
+        outputContainer.appendChild(twoColRow);
+      } else {
+        // ==========================================
+        // 【1カラム行】: 768px 幅 中央揃え
+        // ==========================================
+        const oneColRow = doc.createElement('div');
+        oneColRow.className = 'w-full max-w-[768px] mx-auto px-6 md:px-0 my-8 clear-both';
+
+        const mediaEl = (elem.querySelector('img, iframe, video') as HTMLElement) || null;
+        const captionEl = (elem.querySelector('figcaption, .uncode_text_column, p') as HTMLElement) || null;
+
+        if (mediaEl) {
+          const mediaContainer = doc.createElement('div');
+          mediaContainer.className = 'w-full rounded-2xl overflow-hidden shadow-lg bg-zinc-100 dark:bg-zinc-900';
+
+          const mediaClone = mediaEl.cloneNode(true) as HTMLElement;
+          if (mediaClone.tagName.toLowerCase() === 'img') {
+            mediaClone.className = 'w-full h-auto object-cover rounded-2xl block';
+          } else {
+            mediaClone.className = 'w-full aspect-video rounded-2xl overflow-hidden block shadow-lg';
+          }
+          mediaContainer.appendChild(mediaClone);
+          oneColRow.appendChild(mediaContainer);
+
+          if (captionEl && captionEl.innerHTML.trim() && !captionEl.contains(mediaEl)) {
+            const captionContainer = doc.createElement('div');
+            captionContainer.className =
+              'text-[12px] text-zinc-600 dark:text-white font-sans leading-relaxed mt-3 block [&_p]:text-[12px] [&_p]:text-zinc-600 [&_p]:dark:text-white';
+            captionContainer.innerHTML = captionEl.innerHTML;
+            oneColRow.appendChild(captionContainer);
+          }
+        } else {
+          oneColRow.innerHTML = elem.outerHTML;
+        }
+
+        outputContainer.appendChild(oneColRow);
+      }
+    });
+
+    return outputContainer.innerHTML;
+  } catch (e) {
+    console.error('Error processing article content:', e);
+    return html;
+  }
 }
 
 export default function ArticleDetailClient({ article, otherArticles = [] }: ArticleDetailProps) {
@@ -87,7 +255,13 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
   const imageUrl = article.featuredImage?.node?.sourceUrl || '';
   const readTime = calculateReadingTime(article.content);
 
-  const cleanedContent = cleanWpBakeryShortcodes(article.content);
+  const [processedContent, setProcessedContent] = useState<string>(article.content);
+
+  useEffect(() => {
+    if (article?.content) {
+      setProcessedContent(processArticleContent(article.content));
+    }
+  }, [article.content]);
 
   const filteredOtherArticles = (otherArticles || []).filter(
     (item) => item.id !== article.id && isJapaneseArticle(item) === isJp
@@ -96,7 +270,7 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
   return (
     <main className="min-h-screen bg-white text-black dark:bg-[#0a0a0c] dark:text-white transition-colors duration-500 relative overflow-x-hidden selection:bg-[#FFE100] selection:text-black">
       
-      {/* Header Nav (モバイルでも常に表示・最適化) */}
+      {/* Header Nav */}
       <nav className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-12 py-4 md:py-6 bg-white/80 dark:bg-[#0a0a0c]/80 backdrop-blur-md">
         <button
           onClick={() => router.back()}
@@ -116,10 +290,10 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
         </a>
       </nav>
 
-      <article className="pt-36 pb-32 space-y-16 md:space-y-20">
+      <article className="pt-36 pb-32 space-y-12 md:space-y-16">
         
         {/* Title & Meta Header */}
-        <header className="px-6 md:px-0 max-w-3xl mx-auto space-y-3 w-full">
+        <header className="px-6 md:px-0 max-w-[768px] mx-auto space-y-3 w-full">
           <div className="text-left lg:text-center w-full">
             <span
               className="inline-block text-xs font-semibold uppercase tracking-widest text-black dark:text-[#FFE100] border-b-2 border-[#FFE100] dark:border-transparent pb-1 mb-2"
@@ -131,7 +305,7 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
 
           <h1
             className={`font-medium tracking-tight text-left lg:text-center text-black dark:text-white ${
-              isJp ? 'text-3xl md:text-5xl lg:text-[64px] leading-[1.28]' : 'text-4xl md:text-6xl leading-tight'
+              isJp ? 'text-3xl md:text-5xl lg:text-[56px] leading-[1.28]' : 'text-4xl md:text-6xl leading-tight'
             }`}
             style={{ fontFamily: titleFont }}
           >
@@ -150,7 +324,7 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
 
         {/* Featured Main Hero Image */}
         {imageUrl && (
-          <section className="px-6 md:px-16 max-w-7xl mx-auto">
+          <section className="px-6 md:px-12 max-w-[1400px] mx-auto w-full">
             <div className="rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 aspect-[16/9] relative shadow-lg">
               <img src={imageUrl} alt={article.title} className="w-full h-full object-cover" />
             </div>
@@ -158,11 +332,12 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
         )}
 
         {/* Article Body */}
-        <section className="px-6 md:px-0 max-w-3xl mx-auto w-full">
+        <section className="w-full">
           <div
-            className="article-body text-base text-zinc-600 dark:text-zinc-400 leading-relaxed space-y-6 [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:font-medium [&_h2]:tracking-tight [&_h2]:text-black [&_h2]:dark:text-white [&_h2]:pt-10 [&_h2]:pb-3 [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-medium [&_h3]:tracking-tight [&_h3]:text-black [&_h3]:dark:text-white [&_h3]:pt-8 [&_h3]:pb-2 [&_h4]:text-2xl [&_h4]:md:text-3xl [&_h4]:font-medium [&_h4]:tracking-tight [&_h4]:text-black [&_h4]:dark:text-white [&_h4]:pt-8 [&_h4]:pb-3 [&_p]:text-base [&_p]:text-zinc-600 [&_p]:dark:text-zinc-400 [&_p]:leading-relaxed [&_p]:mb-6 [&_.article-figure]:relative [&_.article-figure]:left-1/2 [&_.article-figure]:-translate-x-1/2 [&_.article-figure]:w-[calc(100vw-3rem)] [&_.article-figure]:md:w-[calc(100vw-8rem)] [&_.article-figure]:max-w-7xl [&_.article-figure]:my-14 [&_.article-image-wrapper]:rounded-2xl [&_.article-image-wrapper]:overflow-hidden [&_.article-image-wrapper]:shadow-lg [&_.article-image-wrapper]:bg-zinc-100 [&_.article-image-wrapper]:dark:bg-zinc-900 [&_.article-image-wrapper_img]:w-full [&_.article-image-wrapper_img]:h-auto [&_.article-image-wrapper_img]:object-cover [&_figcaption]:mt-4 [&_figcaption]:text-xs [&_figcaption]:text-zinc-500 [&_figcaption]:dark:text-zinc-400 [&_figcaption]:leading-relaxed [&_figcaption]:font-sans [&_a]:text-black [&_a]:dark:text-[#FFE100] [&_a]:underline [&_a]:decoration-[#FFE100] [&_a]:decoration-2 [&_a]:underline-offset-4 [&_a]:hover:opacity-70 [&_a]:transition-opacity [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-2 [&_blockquote]:border-[#FFE100] [&_blockquote]:pl-4 [&_blockquote]:italic"
+            className="article-body w-full text-base text-zinc-600 dark:text-zinc-400 leading-relaxed [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:font-medium [&_h2]:tracking-tight [&_h2]:text-black [&_h2]:dark:text-white [&_h2]:pt-10 [&_h2]:pb-3 [&_h3]:text-xl [&_h3]:md:text-2xl [&_h3]:font-medium [&_h3]:tracking-tight [&_h3]:text-black [&_h3]:dark:text-white [&_h3]:pt-8 [&_h3]:pb-2 [&_h4]:text-[30px] [&_h4]:font-medium [&_h4]:tracking-tight [&_h4]:text-black [&_h4]:dark:text-white [&_h4]:pt-10 [&_h4]:pb-3 [&_h4]:font-['var(--font-outfit)',sans-serif] [&_h4_a]:text-[30px] [&_h4_a]:text-black [&_h4_a]:dark:text-white [&_h4_a]:font-['var(--font-outfit)',sans-serif] [&_h4_a]:no-underline [&_p]:text-base [&_p]:text-zinc-600 [&_p]:dark:text-zinc-400 [&_p]:leading-relaxed [&_p]:mb-6 [&_a]:text-black [&_a]:dark:text-[#FFE100] [&_a]:underline [&_a]:decoration-[#FFE100] [&_a]:decoration-2 [&_a]:underline-offset-4 [&_a]:hover:opacity-70 [&_a]:transition-opacity [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_blockquote]:border-l-2 [&_blockquote]:border-[#FFE100] [&_blockquote]:pl-4 [&_blockquote]:italic"
             style={{ fontFamily: bodyFont }}
-            dangerouslySetInnerHTML={{ __html: cleanedContent }}
+            suppressHydrationWarning
+            dangerouslySetInnerHTML={{ __html: processedContent }}
           />
         </section>
 
@@ -241,7 +416,7 @@ export default function ArticleDetailClient({ article, otherArticles = [] }: Art
         </section>
 
         {/* CTA */}
-        <section className="px-6 md:px-0 max-w-3xl mx-auto w-full flex flex-col lg:items-center pt-8">
+        <section className="px-6 md:px-0 max-w-[768px] mx-auto w-full flex flex-col lg:items-center pt-8">
           <div className="text-left lg:text-center w-full">
             <span
               className="inline-block text-xs font-semibold uppercase tracking-widest text-black dark:text-[#FFE100] border-b-2 border-[#FFE100] dark:border-transparent pb-1"
